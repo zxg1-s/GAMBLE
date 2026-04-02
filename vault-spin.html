@@ -1,0 +1,1301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VAULT SPIN — Case Simulator</title>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;600;700&family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0b0f;
+    --bg2: #0f1117;
+    --panel: #13151e;
+    --border: #1e2236;
+    --accent: #e8a020;
+    --accent2: #ff6b1a;
+    --text: #c8d0e0;
+    --text-dim: #5a6080;
+    --common:    #b0b8c8;
+    --uncommon:  #4db8ff;
+    --rare:      #7060ff;
+    --mythical:  #b040ff;
+    --legendary: #e8a020;
+    --ancient:   #eb4b4b;
+    --contraband:#ffd700;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Rajdhani', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+    cursor: default;
+  }
+
+  /* Animated background grid */
+  body::before {
+    content:'';
+    position:fixed; inset:0;
+    background-image:
+      linear-gradient(rgba(232,160,32,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(232,160,32,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events:none;
+    z-index:0;
+  }
+
+  /* ── HEADER ── */
+  header {
+    position: relative;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 40px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(10,11,15,0.9);
+    backdrop-filter: blur(12px);
+  }
+
+  .logo {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 24px;
+    font-weight: 900;
+    letter-spacing: 4px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-shadow: none;
+    filter: drop-shadow(0 0 20px rgba(232,160,32,0.5));
+  }
+
+  .header-stats {
+    display: flex;
+    gap: 32px;
+    align-items: center;
+  }
+
+  .stat-pill {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 16px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 14px;
+  }
+
+  .stat-pill .label { color: var(--text-dim); font-size: 11px; letter-spacing: 1px; }
+  .stat-pill .val { color: var(--accent); font-size: 16px; font-weight: 700; }
+
+  .balance-btn {
+    display: flex; gap: 10px; align-items: center;
+  }
+
+  /* ── MAIN LAYOUT ── */
+  .main {
+    position: relative;
+    z-index: 5;
+    display: grid;
+    grid-template-columns: 260px 1fr 280px;
+    gap: 0;
+    height: calc(100vh - 65px);
+  }
+
+  /* ── SIDEBAR ── */
+  .sidebar {
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    padding: 20px 16px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+
+  .sidebar-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 11px;
+    letter-spacing: 3px;
+    color: var(--text-dim);
+    margin-bottom: 14px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .case-card {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: var(--panel);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .case-card::before {
+    content:'';
+    position:absolute;
+    top:0; left:0; right:0;
+    height:2px;
+    background: var(--card-color, var(--accent));
+    opacity: 0.6;
+  }
+
+  .case-card:hover {
+    border-color: var(--card-color, var(--accent));
+    box-shadow: 0 0 20px rgba(232,160,32,0.15);
+    transform: translateX(4px);
+  }
+
+  .case-card.active {
+    border-color: var(--card-color, var(--accent));
+    box-shadow: 0 0 30px rgba(232,160,32,0.2);
+  }
+
+  .case-icon {
+    font-size: 36px;
+    text-align: center;
+    margin-bottom: 8px;
+    filter: drop-shadow(0 0 8px var(--card-color, var(--accent)));
+  }
+
+  .case-name {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-align: center;
+    color: var(--text);
+  }
+
+  .case-price-tag {
+    text-align: center;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px;
+    color: var(--accent);
+    margin-top: 4px;
+  }
+
+  /* ── CENTER ── */
+  .center {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 30px 20px;
+    gap: 24px;
+    overflow-y: auto;
+  }
+
+  /* SPINNER WINDOW */
+  .spinner-container {
+    width: 100%;
+    max-width: 740px;
+    position: relative;
+  }
+
+  .spinner-label {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 11px;
+    letter-spacing: 3px;
+    color: var(--text-dim);
+    text-align: center;
+    margin-bottom: 12px;
+  }
+
+  .spinner-window {
+    position: relative;
+    width: 100%;
+    height: 140px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--panel);
+  }
+
+  /* Center marker */
+  .spinner-window::before,
+  .spinner-window::after {
+    content: '';
+    position: absolute;
+    top: 0; bottom: 0;
+    left: 50%;
+    width: 2px;
+    transform: translateX(-50%);
+    z-index: 20;
+    pointer-events: none;
+  }
+  .spinner-window::before {
+    background: var(--accent);
+    box-shadow: 0 0 16px var(--accent), 0 0 30px var(--accent);
+  }
+  /* Arrow top + bottom */
+  .spinner-arrow-top,
+  .spinner-arrow-bottom {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    z-index: 25;
+    pointer-events: none;
+  }
+  .spinner-arrow-top {
+    top: -1px;
+    border-left: 10px solid transparent;
+    border-right: 10px solid transparent;
+    border-top: 14px solid var(--accent);
+  }
+  .spinner-arrow-bottom {
+    bottom: -1px;
+    border-left: 10px solid transparent;
+    border-right: 10px solid transparent;
+    border-bottom: 14px solid var(--accent);
+  }
+
+  /* Edge fades */
+  .spinner-window-fade {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg,
+      var(--panel) 0%,
+      transparent 18%,
+      transparent 82%,
+      var(--panel) 100%
+    );
+    z-index: 10;
+    pointer-events: none;
+  }
+
+  .spinner-track {
+    display: flex;
+    align-items: center;
+    position: absolute;
+    top: 0; left: 0;
+    height: 100%;
+    will-change: transform;
+  }
+
+  .spin-item {
+    width: 120px;
+    height: 130px;
+    flex-shrink: 0;
+    margin: 5px 4px;
+    border-radius: 8px;
+    border: 2px solid var(--item-color, var(--border));
+    background: linear-gradient(160deg, rgba(255,255,255,0.04), transparent);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .spin-item::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(160deg, var(--item-color, var(--border)), transparent 60%);
+    opacity: 0.08;
+  }
+
+  .spin-item .item-model {
+    font-size: 42px;
+    filter: drop-shadow(0 0 12px var(--item-color, var(--border)));
+    line-height: 1;
+  }
+
+  .spin-item .item-name {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 9px;
+    color: var(--item-color, var(--text-dim));
+    text-align: center;
+    padding: 0 4px;
+    letter-spacing: 0.5px;
+    line-height: 1.3;
+  }
+
+  .spin-item.winner {
+    border-color: var(--item-color) !important;
+    box-shadow: 0 0 40px var(--item-color), inset 0 0 30px rgba(255,255,255,0.05) !important;
+    animation: winner-pulse 0.8s ease-in-out infinite alternate;
+  }
+
+  @keyframes winner-pulse {
+    from { box-shadow: 0 0 20px var(--item-color), inset 0 0 20px rgba(255,255,255,0.03); }
+    to   { box-shadow: 0 0 60px var(--item-color), 0 0 100px var(--item-color, rgba(232,160,32,0.3)), inset 0 0 40px rgba(255,255,255,0.07); }
+  }
+
+  /* ── CONTROLS ── */
+  .controls-row {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: center;
+    width: 100%;
+    max-width: 740px;
+  }
+
+  .key-slot {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 16px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 13px;
+  }
+
+  .key-count {
+    color: var(--accent);
+    font-size: 18px;
+    font-weight: 700;
+  }
+
+  .btn {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    border: none;
+    border-radius: 8px;
+    padding: 14px 28px;
+    cursor: pointer;
+    transition: all 0.15s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .btn::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(rgba(255,255,255,0.1), transparent);
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+  .btn:hover::after { opacity: 1; }
+
+  .btn-spin {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: #0a0b0f;
+    box-shadow: 0 4px 30px rgba(232,160,32,0.4);
+    min-width: 200px;
+  }
+  .btn-spin:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 40px rgba(232,160,32,0.6);
+  }
+  .btn-spin:active { transform: translateY(0); }
+  .btn-spin:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+  }
+
+  .btn-buy-key {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    font-size: 10px;
+  }
+  .btn-buy-key:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ── RESULT CARD ── */
+  .result-card {
+    width: 100%;
+    max-width: 740px;
+    border-radius: 12px;
+    padding: 24px;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    position: relative;
+    overflow: hidden;
+    border: 1px solid var(--result-color, var(--border));
+    background: var(--panel);
+    animation: result-appear 0.5s cubic-bezier(0.34,1.56,0.64,1);
+  }
+
+  @keyframes result-appear {
+    from { transform: scale(0.8) translateY(20px); opacity: 0; }
+    to   { transform: scale(1) translateY(0); opacity: 1; }
+  }
+
+  .result-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at center, var(--result-color, transparent), transparent 70%);
+    opacity: 0.06;
+  }
+
+  .result-rarity-label {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 10px;
+    letter-spacing: 4px;
+    color: var(--result-color, var(--text-dim));
+    text-transform: uppercase;
+  }
+
+  .result-model { font-size: 72px; filter: drop-shadow(0 0 24px var(--result-color, transparent)); }
+
+  .result-name {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--result-color, var(--text));
+    text-align: center;
+  }
+
+  .result-value {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 14px;
+    color: var(--text-dim);
+  }
+
+  /* ── HISTORY PANEL ── */
+  .history-panel {
+    border-left: 1px solid var(--border);
+    padding: 20px 16px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+
+  .history-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px;
+    border-radius: 6px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    margin-bottom: 8px;
+    border-left: 3px solid var(--item-color, var(--border));
+    animation: slide-in 0.3s ease;
+    transition: all 0.2s;
+  }
+
+  @keyframes slide-in {
+    from { transform: translateX(20px); opacity: 0; }
+    to   { transform: translateX(0); opacity: 1; }
+  }
+
+  .history-item:hover { border-color: var(--item-color, var(--border)); background: rgba(255,255,255,0.02); }
+
+  .history-emoji { font-size: 24px; filter: drop-shadow(0 0 6px var(--item-color, transparent)); }
+
+  .history-info { flex: 1; min-width: 0; }
+  .history-name {
+    font-size: 12px;
+    font-family: 'Share Tech Mono', monospace;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--item-color, var(--text));
+  }
+  .history-case { font-size: 10px; color: var(--text-dim); }
+
+  /* ── ODDS TABLE ── */
+  .odds-section {
+    width: 100%;
+    max-width: 740px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  .odds-header {
+    padding: 14px 20px;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 11px;
+    letter-spacing: 3px;
+    color: var(--text-dim);
+    border-bottom: 1px solid var(--border);
+    background: rgba(255,255,255,0.02);
+  }
+
+  .odds-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 20px;
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px;
+  }
+
+  .odds-row:last-child { border-bottom: none; }
+
+  .odds-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--dot-color);
+    box-shadow: 0 0 6px var(--dot-color);
+    flex-shrink: 0;
+  }
+
+  .odds-bar {
+    flex: 1;
+    height: 4px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 2px;
+    margin: 0 12px;
+    overflow: hidden;
+  }
+
+  .odds-bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    background: var(--dot-color);
+    opacity: 0.7;
+  }
+
+  /* Particles */
+  .particle {
+    position: fixed;
+    pointer-events: none;
+    z-index: 1000;
+    border-radius: 50%;
+    animation: particle-fly linear forwards;
+  }
+  @keyframes particle-fly {
+    to { transform: translate(var(--tx), var(--ty)) scale(0); opacity: 0; }
+  }
+
+  /* Screen flash */
+  .flash-overlay {
+    position: fixed; inset: 0;
+    z-index: 999;
+    pointer-events: none;
+    opacity: 0;
+    background: var(--flash-color, white);
+    transition: opacity 0.1s;
+  }
+  .flash-overlay.active {
+    opacity: 0.12;
+    transition: none;
+  }
+
+  /* ── GUN SVG styles ── */
+  .gun-svg-wrap {
+    display: flex;
+    justify-content: center;
+    margin-top: 4px;
+  }
+
+  /* notification toast */
+  .toast {
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 24px;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 12px;
+    letter-spacing: 2px;
+    z-index: 2000;
+    transition: transform 0.4s cubic-bezier(0.34,1.56,0.64,1);
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+
+  /* scrollbar */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<div class="flash-overlay" id="flashOverlay"></div>
+
+<!-- ── HEADER ── -->
+<header>
+  <div class="logo">VAULT//SPIN</div>
+  <div class="header-stats">
+    <div class="stat-pill">
+      <div>
+        <div class="label">KEYS</div>
+        <div class="val" id="keyCount">10</div>
+      </div>
+    </div>
+    <div class="stat-pill">
+      <div>
+        <div class="label">TOTAL OPENS</div>
+        <div class="val" id="openCount">0</div>
+      </div>
+    </div>
+    <div class="stat-pill">
+      <div>
+        <div class="label">BEST DROP</div>
+        <div class="val" id="bestDrop">—</div>
+      </div>
+    </div>
+    <button class="btn btn-buy-key" onclick="buyKeys()">+ GET KEYS</button>
+  </div>
+</header>
+
+<!-- ── MAIN ── -->
+<div class="main">
+
+  <!-- SIDEBAR: cases -->
+  <div class="sidebar">
+    <div class="sidebar-title">SELECT CASE</div>
+    <div id="caseList"></div>
+  </div>
+
+  <!-- CENTER -->
+  <div class="center">
+    <div class="spinner-label" id="selectedCaseName">VAULT PRIME CASE</div>
+
+    <!-- GUN MODEL (SVG drawn weapon) -->
+    <div class="gun-svg-wrap" id="gunWrap"></div>
+
+    <!-- SPINNER -->
+    <div class="spinner-container">
+      <div class="spinner-window" id="spinnerWindow">
+        <div class="spinner-arrow-top"></div>
+        <div class="spinner-arrow-bottom"></div>
+        <div class="spinner-window-fade"></div>
+        <div class="spinner-track" id="spinnerTrack"></div>
+      </div>
+    </div>
+
+    <!-- RESULT -->
+    <div class="result-card" id="resultCard">
+      <div class="result-rarity-label" id="resultRarity">RARE</div>
+      <div class="result-model" id="resultModel">🔫</div>
+      <div class="result-name" id="resultName">AK-47 | Redline</div>
+      <div class="result-value" id="resultValue">Value: $12.45</div>
+    </div>
+
+    <!-- CONTROLS -->
+    <div class="controls-row">
+      <div class="key-slot">🗝️ <span class="key-count" id="keysLeft">10</span> keys</div>
+      <button class="btn btn-spin" id="spinBtn" onclick="openCase()">OPEN CASE</button>
+    </div>
+
+    <!-- ODDS -->
+    <div class="odds-section" id="oddsSection"></div>
+  </div>
+
+  <!-- HISTORY -->
+  <div class="history-panel">
+    <div class="sidebar-title">RECENT DROPS</div>
+    <div id="historyList"></div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════
+//  DATA
+// ══════════════════════════════════════════
+
+const RARITIES = {
+  common:    { name:'Consumer Grade',    color:'#b0b8c8', prob: 79.92 },
+  uncommon:  { name:'Industrial Grade',  color:'#4db8ff', prob: 15.98 },
+  rare:      { name:'Mil-Spec',          color:'#7060ff', prob:  3.20 },
+  mythical:  { name:'Restricted',        color:'#b040ff', prob:  0.64 },
+  legendary: { name:'Classified',        color:'#e8a020', prob:  0.32 },
+  ancient:   { name:'Covert',            color:'#eb4b4b', prob:  0.16 },
+  contraband:{ name:'Rare Special Item', color:'#ffd700', prob:  0.26 },
+};
+
+const ALL_CASES = [
+  {
+    id:'prime', name:'Vault Prime', icon:'📦', color:'#e8a020',
+    description:'Classic vault goods',
+    items: [
+      {name:'P250 | Asiimov',       model:'🔫', rarity:'common',     value:0.08},
+      {name:'Glock | Water Elemental',model:'🔫',rarity:'common',    value:0.10},
+      {name:'MP5 | Phosphor',       model:'🔫', rarity:'common',     value:0.09},
+      {name:'UMP-45 | Exposure',    model:'🔫', rarity:'common',     value:0.08},
+      {name:'MAC-10 | Neon Rider',  model:'🔫', rarity:'uncommon',   value:0.35},
+      {name:'AUG | Stymphalian',    model:'🔫', rarity:'uncommon',   value:0.40},
+      {name:'SG 553 | Colony',      model:'🔫', rarity:'uncommon',   value:0.28},
+      {name:'Five-SeveN | Kami',    model:'🔫', rarity:'rare',       value:1.20},
+      {name:'AK-47 | Redline',      model:'🔫', rarity:'rare',       value:3.50},
+      {name:'M4A1-S | Decimator',   model:'🔫', rarity:'mythical',   value:6.80},
+      {name:'AWP | Hyper Beast',    model:'🔫', rarity:'legendary',  value:18.50},
+      {name:'M4A4 | Howl',         model:'🔫', rarity:'ancient',    value:420.00},
+      {name:'★ Karambit | Doppler', model:'🗡️', rarity:'contraband', value:650.00},
+    ]
+  },
+  {
+    id:'cyber', name:'CyberEdge', icon:'💾', color:'#4db8ff',
+    description:'Neon-soaked future tech',
+    items: [
+      {name:'P90 | Neoqueen',         model:'🔫', rarity:'common',    value:0.12},
+      {name:'Tec-9 | Decimator',      model:'🔫', rarity:'common',    value:0.09},
+      {name:'Nova | Bloomstick',      model:'🔫', rarity:'common',    value:0.07},
+      {name:'PP-Bizon | Cobalt Halftone', model:'🔫',rarity:'common', value:0.10},
+      {name:'MP9 | Hydra',            model:'🔫', rarity:'uncommon',  value:0.50},
+      {name:'SCAR-20 | Bloodsport',   model:'🔫', rarity:'uncommon',  value:0.60},
+      {name:'CZ75 | Xiangliu',        model:'🔫', rarity:'rare',      value:1.80},
+      {name:'Desert Eagle | Blaze',   model:'🔫', rarity:'mythical',  value:9.00},
+      {name:'AWP | Electric Hive',    model:'🔫', rarity:'legendary', value:22.00},
+      {name:'AK-47 | Neon Revolution',model:'🔫', rarity:'ancient',   value:85.00},
+      {name:'★ Butterfly | Tiger Tooth',model:'🗡️',rarity:'contraband',value:700.00},
+    ]
+  },
+  {
+    id:'shadow', name:'Shadow Ops', icon:'🕶️', color:'#b040ff',
+    description:'Black market exclusives',
+    items: [
+      {name:'USP-S | Kill Confirmed', model:'🔫', rarity:'common',    value:0.15},
+      {name:'CZ75 | Army Sheen',      model:'🔫', rarity:'common',    value:0.08},
+      {name:'Galil | Phoenix Blacklight',model:'🔫',rarity:'common',  value:0.11},
+      {name:'FAMAS | Meltdown',       model:'🔫', rarity:'uncommon',  value:0.45},
+      {name:'SSG 08 | Dragonfire',    model:'🔫', rarity:'uncommon',  value:0.55},
+      {name:'AUG | Chameleon',        model:'🔫', rarity:'rare',      value:2.10},
+      {name:'M4A1-S | Nightmare',     model:'🔫', rarity:'mythical',  value:7.50},
+      {name:'Glock | Fade',           model:'🔫', rarity:'legendary', value:28.00},
+      {name:'AWP | Dragon Lore',      model:'🔫', rarity:'ancient',   value:1200.00},
+      {name:'★ M9 Bayonet | Gamma Doppler',model:'🗡️',rarity:'contraband',value:580.00},
+    ]
+  },
+  {
+    id:'inferno', name:'Inferno', icon:'🔥', color:'#eb4b4b',
+    description:'Born from the flames',
+    items: [
+      {name:'Negev | Lionfish',       model:'🔫', rarity:'common',    value:0.07},
+      {name:'MP7 | Skulls',           model:'🔫', rarity:'common',    value:0.09},
+      {name:'Sawed-Off | Salami',     model:'🔫', rarity:'common',    value:0.08},
+      {name:'XM1014 | XOXO',          model:'🔫', rarity:'common',    value:0.10},
+      {name:'UMP-45 | Blaze',         model:'🔫', rarity:'uncommon',  value:0.38},
+      {name:'P2000 | Fire Elemental', model:'🔫', rarity:'uncommon',  value:0.42},
+      {name:'Mag-7 | Heat',           model:'🔫', rarity:'rare',      value:1.50},
+      {name:'AK-47 | Fire Serpent',   model:'🔫', rarity:'mythical',  value:11.00},
+      {name:'M4A4 | Desolate Space',  model:'🔫', rarity:'legendary', value:32.00},
+      {name:'AWP | Medusa',           model:'🔫', rarity:'ancient',   value:175.00},
+      {name:'★ Flip Knife | Lore',    model:'🗡️', rarity:'contraband',value:450.00},
+    ]
+  },
+  {
+    id:'chrome', name:'Chrome Vault', icon:'⚙️', color:'#c0c8d8',
+    description:'Industrial precision',
+    items: [
+      {name:'P250 | Valence',         model:'🔫', rarity:'common',    value:0.06},
+      {name:'Dual Berettas | Dualing Dragons',model:'🔫',rarity:'common',value:0.09},
+      {name:'MP5 | Lab Rats',         model:'🔫', rarity:'common',    value:0.08},
+      {name:'SCAR-20 | Catalyst',     model:'🔫', rarity:'uncommon',  value:0.33},
+      {name:'SG553 | Ol Rusty',       model:'🔫', rarity:'uncommon',  value:0.30},
+      {name:'AK-47 | Frontside Misty',model:'🔫', rarity:'rare',      value:2.80},
+      {name:'M4A1-S | Mecha Industries',model:'🔫',rarity:'mythical', value:8.20},
+      {name:'Desert Eagle | Printstream',model:'🔫',rarity:'legendary',value:40.00},
+      {name:'AWP | Wildfire',         model:'🔫', rarity:'ancient',   value:90.00},
+      {name:'★ Skeleton Knife | Fade',model:'🗡️', rarity:'contraband',value:820.00},
+    ]
+  },
+];
+
+// ══════════════════════════════════════════
+//  AUDIO (Web Audio API — no external deps)
+// ══════════════════════════════════════════
+
+const AC = new (window.AudioContext || window.webkitAudioContext)();
+
+function playTick() {
+  const o = AC.createOscillator();
+  const g = AC.createGain();
+  o.connect(g); g.connect(AC.destination);
+  o.frequency.value = 800 + Math.random()*200;
+  g.gain.setValueAtTime(0.08, AC.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, AC.currentTime+0.07);
+  o.start(); o.stop(AC.currentTime+0.07);
+}
+
+function playReveal(rarity) {
+  const colors = {
+    common:0, uncommon:200, rare:240, mythical:280, legendary:40, ancient:0, contraband:50
+  };
+  const freq = 300 + (colors[rarity]||0)/360*400;
+  // Two notes for reveal ding
+  [0, 0.15, 0.3].forEach((t,i) => {
+    const o = AC.createOscillator();
+    const g = AC.createGain();
+    o.connect(g); g.connect(AC.destination);
+    o.type = 'sine';
+    o.frequency.value = freq * (1 + i*0.25);
+    g.gain.setValueAtTime(0, AC.currentTime+t);
+    g.gain.linearRampToValueAtTime(0.3, AC.currentTime+t+0.05);
+    g.gain.exponentialRampToValueAtTime(0.001, AC.currentTime+t+0.5);
+    o.start(AC.currentTime+t);
+    o.stop(AC.currentTime+t+0.6);
+  });
+}
+
+function playOpenClick() {
+  const o = AC.createOscillator();
+  const g = AC.createGain();
+  o.connect(g); g.connect(AC.destination);
+  o.type = 'square';
+  o.frequency.setValueAtTime(200, AC.currentTime);
+  o.frequency.exponentialRampToValueAtTime(80, AC.currentTime+0.15);
+  g.gain.setValueAtTime(0.15, AC.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, AC.currentTime+0.15);
+  o.start(); o.stop(AC.currentTime+0.15);
+}
+
+function resumeAudio() {
+  if(AC.state === 'suspended') AC.resume();
+}
+
+// ══════════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════════
+
+let keys = 10;
+let opens = 0;
+let bestDrop = null;
+let spinning = false;
+let selectedCase = ALL_CASES[0];
+let history = [];
+
+// ══════════════════════════════════════════
+//  WEIGHTED RANDOM
+// ══════════════════════════════════════════
+
+function weightedRoll(items) {
+  // Build cumulative rarity table
+  const cum = [];
+  let total = 0;
+  for(const [key, r] of Object.entries(RARITIES)) {
+    total += r.prob;
+    cum.push({key, thresh: total});
+  }
+  const roll = Math.random() * total;
+  let rarity = 'common';
+  for(const c of cum) {
+    if(roll <= c.thresh) { rarity = c.key; break; }
+  }
+  // Filter items by rarity, fall back to closest
+  let pool = items.filter(i => i.rarity === rarity);
+  if(!pool.length) {
+    // fallback: pick nearest
+    const order = Object.keys(RARITIES);
+    let idx = order.indexOf(rarity);
+    while(pool.length === 0 && idx >= 0) {
+      pool = items.filter(i => i.rarity === order[idx]);
+      idx--;
+    }
+    if(!pool.length) pool = items;
+  }
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+// ══════════════════════════════════════════
+//  RENDER CASES
+// ══════════════════════════════════════════
+
+function renderCases() {
+  const list = document.getElementById('caseList');
+  list.innerHTML = '';
+  ALL_CASES.forEach(c => {
+    const el = document.createElement('div');
+    el.className = 'case-card' + (c.id === selectedCase.id ? ' active' : '');
+    el.style.setProperty('--card-color', c.color);
+    el.innerHTML = `
+      <div class="case-icon">${c.icon}</div>
+      <div class="case-name">${c.name.toUpperCase()}</div>
+      <div class="case-price-tag">🗝️ 1 KEY</div>
+    `;
+    el.onclick = () => { selectedCase = c; selectCase(); };
+    list.appendChild(el);
+  });
+}
+
+function selectCase() {
+  renderCases();
+  document.getElementById('selectedCaseName').textContent = selectedCase.name.toUpperCase() + ' CASE';
+  renderOdds();
+  renderGun();
+  playOpenClick();
+}
+
+// ══════════════════════════════════════════
+//  GUN SVG MODEL
+// ══════════════════════════════════════════
+
+const GUN_SHAPES = {
+  prime:    drawAK,
+  cyber:    drawMP5,
+  shadow:   drawAWP,
+  inferno:  drawDeagle,
+  chrome:   drawM4,
+};
+
+function drawAK(color) {
+  return `<svg width="240" height="80" viewBox="0 0 240 80" xmlns="http://www.w3.org/2000/svg">
+    <filter id="glow"><feGaussianBlur stdDeviation="3" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <g filter="url(#glow)" fill="${color}" opacity="0.9">
+      <!-- barrel --><rect x="10" y="32" width="130" height="8" rx="2"/>
+      <!-- body --><rect x="80" y="26" width="80" height="22" rx="3"/>
+      <!-- mag --><rect x="105" y="45" width="22" height="28" rx="3"/>
+      <!-- stock --><rect x="155" y="28" width="55" height="12" rx="2"/>
+      <rect x="185" y="40" width="28" height="8" rx="2"/>
+      <!-- handle --><rect x="148" y="38" width="16" height="24" rx="3"/>
+      <!-- scope rail --><rect x="82" y="22" width="50" height="5" rx="1"/>
+      <!-- gas tube --><rect x="30" y="28" width="70" height="5" rx="1"/>
+    </g>
+    <text x="120" y="18" fill="${color}" font-family="Orbitron,sans-serif" font-size="9" text-anchor="middle" opacity="0.7" letter-spacing="2">AK-47</text>
+  </svg>`;
+}
+
+function drawMP5(color) {
+  return `<svg width="240" height="80" viewBox="0 0 240 80" xmlns="http://www.w3.org/2000/svg">
+    <filter id="glow2"><feGaussianBlur stdDeviation="3" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <g filter="url(#glow2)" fill="${color}" opacity="0.9">
+      <!-- barrel --><rect x="10" y="33" width="100" height="7" rx="2"/>
+      <!-- body --><rect x="70" y="27" width="90" height="20" rx="4"/>
+      <!-- mag --><rect x="90" y="44" width="18" height="25" rx="3"/>
+      <!-- stock folded --><rect x="155" y="30" width="60" height="8" rx="2"/>
+      <rect x="175" y="36" width="40" height="6" rx="2"/>
+      <!-- handle --><rect x="148" y="38" width="14" height="20" rx="3"/>
+      <!-- foregrip --><rect x="50" y="38" width="10" height="18" rx="2"/>
+    </g>
+    <text x="120" y="18" fill="${color}" font-family="Orbitron,sans-serif" font-size="9" text-anchor="middle" opacity="0.7" letter-spacing="2">MP5-SD</text>
+  </svg>`;
+}
+
+function drawAWP(color) {
+  return `<svg width="260" height="80" viewBox="0 0 260 80" xmlns="http://www.w3.org/2000/svg">
+    <filter id="glow3"><feGaussianBlur stdDeviation="3" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <g filter="url(#glow3)" fill="${color}" opacity="0.9">
+      <!-- barrel (long) --><rect x="5" y="35" width="160" height="6" rx="2"/>
+      <!-- body --><rect x="110" y="27" width="85" height="20" rx="3"/>
+      <!-- stock --><rect x="185" y="30" width="65" height="14" rx="3"/>
+      <!-- handle --><rect x="170" y="40" width="14" height="24" rx="3"/>
+      <!-- scope --><rect x="115" y="20" width="60" height="10" rx="3"/>
+      <circle cx="145" cy="22" r="5" fill="none" stroke="${color}" stroke-width="2"/>
+      <!-- bipod legs --><rect x="28" y="38" width="4" height="22" rx="2"/><rect x="38" y="38" width="4" height="22" rx="2"/>
+    </g>
+    <text x="130" y="14" fill="${color}" font-family="Orbitron,sans-serif" font-size="9" text-anchor="middle" opacity="0.7" letter-spacing="2">AWP</text>
+  </svg>`;
+}
+
+function drawDeagle(color) {
+  return `<svg width="180" height="80" viewBox="0 0 180 80" xmlns="http://www.w3.org/2000/svg">
+    <filter id="glow4"><feGaussianBlur stdDeviation="3" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <g filter="url(#glow4)" fill="${color}" opacity="0.9">
+      <!-- barrel --><rect x="20" y="30" width="90" height="9" rx="2"/>
+      <!-- slide --><rect x="20" y="25" width="90" height="15" rx="3"/>
+      <!-- body/frame --><rect x="55" y="38" width="60" height="18" rx="3"/>
+      <!-- handle --><rect x="90" y="44" width="22" height="26" rx="4"/>
+      <!-- trigger guard --><path d="M60 46 Q55 60 65 60 L85 60 L85 48" fill="none" stroke="${color}" stroke-width="3"/>
+      <!-- hammer --><rect x="106" y="26" width="8" height="10" rx="2"/>
+      <!-- mag --><rect x="93" y="58" width="16" height="14" rx="2"/>
+    </g>
+    <text x="90" y="18" fill="${color}" font-family="Orbitron,sans-serif" font-size="9" text-anchor="middle" opacity="0.7" letter-spacing="2">DEAGLE</text>
+  </svg>`;
+}
+
+function drawM4(color) {
+  return `<svg width="250" height="80" viewBox="0 0 250 80" xmlns="http://www.w3.org/2000/svg">
+    <filter id="glow5"><feGaussianBlur stdDeviation="3" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <g filter="url(#glow5)" fill="${color}" opacity="0.9">
+      <!-- barrel --><rect x="8" y="33" width="120" height="7" rx="2"/>
+      <!-- suppressor outline --><rect x="8" y="30" width="30" height="13" rx="3" fill="none" stroke="${color}" stroke-width="2"/>
+      <!-- body --><rect x="80" y="26" width="90" height="22" rx="3"/>
+      <!-- handguard --><rect x="40" y="30" width="55" height="15" rx="2"/>
+      <!-- mag --><rect x="102" y="45" width="24" height="26" rx="3"/>
+      <!-- stock (collapsible) --><rect x="162" y="30" width="70" height="10" rx="2"/><rect x="192" y="38" width="42" height="6" rx="2"/>
+      <!-- handle --><rect x="155" y="38" width="15" height="24" rx="3"/>
+      <!-- carry handle/scope --><rect x="84" y="20" width="55" height="8" rx="2"/>
+    </g>
+    <text x="125" y="14" fill="${color}" font-family="Orbitron,sans-serif" font-size="9" text-anchor="middle" opacity="0.7" letter-spacing="2">M4A1-S</text>
+  </svg>`;
+}
+
+function renderGun() {
+  const wrap = document.getElementById('gunWrap');
+  const drawFn = GUN_SHAPES[selectedCase.id] || drawAK;
+  wrap.innerHTML = drawFn(selectedCase.color);
+}
+
+// ══════════════════════════════════════════
+//  ODDS TABLE
+// ══════════════════════════════════════════
+
+function renderOdds() {
+  const sec = document.getElementById('oddsSection');
+  const maxProb = RARITIES.common.prob;
+  sec.innerHTML = `<div class="odds-header">DROP RATES — ${selectedCase.name.toUpperCase()}</div>` +
+    Object.entries(RARITIES).map(([key, r]) => {
+      const hasItem = selectedCase.items.some(i => i.rarity === key);
+      if(!hasItem) return '';
+      return `<div class="odds-row">
+        <span class="odds-dot" style="--dot-color:${r.color}"></span>
+        <span style="color:${r.color};font-size:11px;width:130px;flex-shrink:0">${r.name}</span>
+        <div class="odds-bar"><div class="odds-bar-fill" style="width:${Math.min(100, r.prob/maxProb*100)}%;--dot-color:${r.color}"></div></div>
+        <span style="color:${r.color};min-width:50px;text-align:right">${r.prob.toFixed(2)}%</span>
+      </div>`;
+    }).join('');
+}
+
+// ══════════════════════════════════════════
+//  SPINNER BUILD
+// ══════════════════════════════════════════
+
+const ITEM_W = 128; // 120px + 4+4 margin
+
+function buildSpinnerItems(winner) {
+  // Fill track: 60 random items + winner at position 50
+  const items = selectedCase.items;
+  const count = 60;
+  const winnerPos = 50;
+  const track = [];
+  for(let i = 0; i < count; i++) {
+    if(i === winnerPos) {
+      track.push({...winner, isWinner: true});
+    } else {
+      track.push(items[Math.floor(Math.random()*items.length)]);
+    }
+  }
+  return track;
+}
+
+function renderSpinner(items) {
+  const track = document.getElementById('spinnerTrack');
+  track.innerHTML = '';
+  track.style.transform = 'translateX(0)';
+  items.forEach((item, i) => {
+    const r = RARITIES[item.rarity];
+    const div = document.createElement('div');
+    div.className = 'spin-item' + (item.isWinner ? ' winner-target' : '');
+    div.style.setProperty('--item-color', r.color);
+    div.innerHTML = `<div class="item-model">${item.model}</div><div class="item-name">${item.name}</div>`;
+    track.appendChild(div);
+  });
+  return track;
+}
+
+// ══════════════════════════════════════════
+//  OPEN CASE
+// ══════════════════════════════════════════
+
+function openCase() {
+  if(spinning) return;
+  if(keys <= 0) { showToast('NO KEYS — GET MORE!'); return; }
+  resumeAudio();
+  playOpenClick();
+
+  keys--;
+  opens++;
+  updateHUD();
+
+  const winner = weightedRoll(selectedCase.items);
+  const trackItems = buildSpinnerItems(winner);
+  const track = renderSpinner(trackItems);
+  const winnerPos = 50;
+
+  // Hide previous result
+  const resultCard = document.getElementById('resultCard');
+  resultCard.style.display = 'none';
+
+  spinning = true;
+  document.getElementById('spinBtn').disabled = true;
+
+  // Calculate target offset so winner is centered
+  const windowW = document.getElementById('spinnerWindow').offsetWidth;
+  const centerOffset = windowW / 2 - ITEM_W / 2;
+  const targetX = -(winnerPos * ITEM_W - centerOffset) + (Math.random()*40 - 20);
+
+  // Animate
+  const duration = 4800;
+  const start = performance.now();
+  let lastTick = 0;
+
+  function easeOut(t) {
+    return 1 - Math.pow(1 - t, 4);
+  }
+
+  const totalDist = Math.abs(targetX);
+  
+  function animate(now) {
+    const elapsed = now - start;
+    const t = Math.min(elapsed / duration, 1);
+    const e = easeOut(t);
+    const currentX = e * targetX;
+    track.style.transform = `translateX(${currentX}px)`;
+
+    // Tick sound based on velocity
+    const velocity = Math.abs(targetX * (1 - Math.pow(1-t,3)) / duration);
+    const tickInterval = Math.max(50, 200 - velocity * 0.5);
+    if(now - lastTick > tickInterval * (0.5 + t*0.5)) {
+      playTick();
+      lastTick = now;
+    }
+
+    if(t < 1) {
+      requestAnimationFrame(animate);
+    } else {
+      // Done!
+      spinning = false;
+      document.getElementById('spinBtn').disabled = false;
+      revealWinner(winner);
+    }
+  }
+  requestAnimationFrame(animate);
+}
+
+function revealWinner(item) {
+  const r = RARITIES[item.rarity];
+  playReveal(item.rarity);
+  flashScreen(r.color);
+  if(item.rarity !== 'common') spawnParticles(r.color);
+
+  const card = document.getElementById('resultCard');
+  card.style.setProperty('--result-color', r.color);
+  card.style.display = 'flex';
+  document.getElementById('resultRarity').textContent = r.name.toUpperCase();
+  document.getElementById('resultModel').textContent = item.model;
+  document.getElementById('resultName').textContent = item.name;
+  document.getElementById('resultValue').textContent = `Estimated Value: $${item.value.toFixed(2)}`;
+
+  // Best drop
+  if(!bestDrop || item.value > bestDrop.value) {
+    bestDrop = item;
+    document.getElementById('bestDrop').textContent = item.name.split('|')[1]?.trim().toUpperCase() || item.name;
+  }
+
+  // History
+  addHistory(item, r.color);
+}
+
+// ══════════════════════════════════════════
+//  PARTICLES
+// ══════════════════════════════════════════
+
+function spawnParticles(color) {
+  const count = 40;
+  for(let i = 0; i < count; i++) {
+    const el = document.createElement('div');
+    el.className = 'particle';
+    const size = 4 + Math.random()*8;
+    el.style.cssText = `
+      width:${size}px;height:${size}px;
+      background:${color};
+      left:${window.innerWidth/2}px;top:${window.innerHeight/2}px;
+      --tx:${(Math.random()-0.5)*600}px;
+      --ty:${(Math.random()-0.5)*400}px;
+      opacity:1;
+      box-shadow:0 0 6px ${color};
+      animation-duration:${0.6+Math.random()*0.8}s;
+      animation-delay:${Math.random()*0.2}s;
+    `;
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 1600);
+  }
+}
+
+function flashScreen(color) {
+  const f = document.getElementById('flashOverlay');
+  f.style.setProperty('--flash-color', color);
+  f.classList.add('active');
+  setTimeout(() => f.classList.remove('active'), 150);
+}
+
+// ══════════════════════════════════════════
+//  HISTORY
+// ══════════════════════════════════════════
+
+function addHistory(item, color) {
+  history.unshift({item, color, case_name: selectedCase.name});
+  if(history.length > 30) history.pop();
+  renderHistory();
+}
+
+function renderHistory() {
+  const list = document.getElementById('historyList');
+  list.innerHTML = '';
+  history.forEach(h => {
+    const div = document.createElement('div');
+    div.className = 'history-item';
+    div.style.setProperty('--item-color', h.color);
+    div.innerHTML = `
+      <div class="history-emoji">${h.item.model}</div>
+      <div class="history-info">
+        <div class="history-name">${h.item.name}</div>
+        <div class="history-case">${h.case_name} · $${h.item.value.toFixed(2)}</div>
+      </div>
+    `;
+    list.appendChild(div);
+  });
+}
+
+// ══════════════════════════════════════════
+//  HUD UPDATE
+// ══════════════════════════════════════════
+
+function updateHUD() {
+  document.getElementById('keyCount').textContent = keys;
+  document.getElementById('keysLeft').textContent = keys;
+  document.getElementById('openCount').textContent = opens;
+}
+
+function buyKeys() {
+  keys += 5;
+  updateHUD();
+  showToast('+5 KEYS ADDED — GO WILD!');
+  resumeAudio();
+}
+
+// ══════════════════════════════════════════
+//  TOAST
+// ══════════════════════════════════════════
+
+let toastTimer = null;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ══════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════
+
+renderCases();
+renderOdds();
+renderGun();
+
+// Prefill spinner with random items for visual
+(function prefillSpinner() {
+  const items = [];
+  for(let i = 0; i < 8; i++) {
+    const item = selectedCase.items[Math.floor(Math.random()*selectedCase.items.length)];
+    const r = RARITIES[item.rarity];
+    const div = `<div class="spin-item" style="--item-color:${r.color}">
+      <div class="item-model">${item.model}</div>
+      <div class="item-name">${item.name}</div>
+    </div>`;
+    items.push(div);
+  }
+  document.getElementById('spinnerTrack').innerHTML = items.join('');
+})();
+</script>
+</body>
+</html>
