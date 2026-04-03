@@ -1133,5 +1133,68 @@ renderCases(); renderGun(); renderOdds(); renderBattlePickers();
 })();
 updateHUD();
 </script>
+<div id="buyModal" style="position:fixed; inset:0; background:rgba(0,0,0,0.97); display:none; align-items:center; justify-content:center; z-index:99999; font-family:'Rajdhani',sans-serif;">
+  <div style="background:var(--panel); width:460px; border-radius:16px; border:3px solid var(--accent); overflow:hidden; box-shadow:0 0 60px rgba(240,165,0,0.4);">
+    
+    <!-- Header -->
+    <div style="padding:20px 24px; background:var(--bg2); text-align:center; border-bottom:1px solid var(--border);">
+      <div style="font-family:'Orbitron',sans-serif; font-size:20px; color:var(--accent);">ADD KEYS TO VAULT</div>
+    </div>
+
+    <!-- Packages -->
+    <div style="padding:24px; display:flex; flex-direction:column; gap:12px;" id="packageList"></div>
+
+    <!-- Payment Section -->
+    <div id="paymentSection" style="padding:24px; border-top:1px solid var(--border); display:none;">
+      <div style="margin-bottom:16px; font-size:11px; letter-spacing:2px; color:var(--dim);">PAYMENT METHOD — VISA / MASTERCARD</div>
+      
+      <!-- Fake Card -->
+      <div style="background:#1a1f2e; padding:20px; border-radius:12px; border:2px solid var(--border); margin-bottom:20px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+          <div style="font-family:'Share Tech Mono',monospace; font-size:14px; color:var(--accent);">VISA •••• 4242</div>
+          <div style="font-size:28px;">💳</div>
+        </div>
+        <div style="font-family:'Share Tech Mono',monospace; font-size:19px; letter-spacing:4px; margin-bottom:16px; color:#ddd;" id="fakeCardNumber">4242 4242 4242 4242</div>
+        <div style="display:flex; gap:30px;">
+          <div>
+            <div style="font-size:9px; color:var(--dim);">CARDHOLDER NAME</div>
+            <div style="font-size:15px;">CHRISTIAN WILSON</div>
+          </div>
+          <div>
+            <div style="font-size:9px; color:var(--dim);">EXPIRY DATE</div>
+            <div style="font-size:15px;">04 / 29</div>
+          </div>
+          <div>
+            <div style="font-size:9px; color:var(--dim);">CVV</div>
+            <div style="font-size:15px;">424</div>
+          </div>
+        </div>
+      </div>
+
+      <button onclick="processFakePayment()" id="payNowBtn"
+        style="width:100%; padding:18px; background:linear-gradient(135deg, #f0a500, #ff6820); color:#08090d; font-family:'Orbitron',sans-serif; font-size:15px; font-weight:700; letter-spacing:2px; border:none; border-radius:10px; cursor:pointer;">
+        PAY <span id="payAmount">$9.99</span> — ADD KEYS
+      </button>
+      
+      <div style="text-align:center; margin-top:16px; font-size:10px; color:var(--dim);">This is a simulation • No real money is charged</div>
+    </div>
+
+    <!-- Processing -->
+    <div id="processingScreen" style="display:none; position:absolute; inset:0; background:rgba(8,9,13,0.98); flex-direction:column; align-items:center; justify-content:center; gap:24px;">
+      <div id="processingStatus" style="font-family:'Orbitron',sans-serif; font-size:16px; letter-spacing:3px; color:var(--accent);">PROCESSING TRANSACTION...</div>
+      <div style="width:220px; height:6px; background:var(--border2); border-radius:999px; overflow:hidden;">
+        <div id="progressBar" style="height:100%; width:0%; background:linear-gradient(90deg,var(--accent),#00e5ff); transition:width 3s linear;"></div>
+      </div>
+    </div>
+
+    <!-- Success -->
+    <div id="successScreen" style="display:none; position:absolute; inset:0; background:rgba(8,9,13,0.98); flex-direction:column; align-items:center; justify-content:center; gap:20px; color:var(--green);">
+      <div style="font-size:90px;">✅</div>
+      <div style="font-family:'Orbitron',sans-serif; font-size:24px; font-weight:900;">TRANSACTION COMPLETE</div>
+      <div style="font-size:52px; font-weight:900;" id="successKeys">+50 KEYS</div>
+      <button onclick="closeBuyModal()" style="margin-top:30px; padding:14px 50px; background:var(--green); color:#08090d; border:none; border-radius:10px; font-weight:700; font-size:15px;">BACK TO VAULT</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
